@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Privacy Monitor Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <header class="header-bar">
+        <div class="header-title">Privacy Monitor Dashboard</div>
+        <div id="status-badge" class="status-badge status-inactive">Inactive</div>
+        <div class="header-buttons">
+            <button id="start-btn" onclick="startMonitoring()">Start Monitoring</button>
+            <button id="stop-btn" onclick="stopMonitoring()">Stop Monitoring</button>
+        </div>
+    </header>
+
+    <section class="metrics-row">
+        <div class="metric-card">
+            <div class="metric-number" id="total-count">0</div>
+            <div class="metric-label">Total Alerts</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-number" id="http-count">0</div>
+            <div class="metric-label">HTTP Alerts</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-number" id="ftp-telnet-count">0</div>
+            <div class="metric-label">FTP / Telnet Alerts</div>
+        </div>
+    </section>
+
+    <section class="table-section">
+        <table id="alerts-table">
+            <thead>
+                <tr>
+                    <th>Alert ID</th>
+                    <th>Source IP</th>
+                    <th>Destination IP</th>
+                    <th>Protocol</th>
+                    <th>Port</th>
+                    <th>Timestamp</th>
+                </tr>
+            </thead>
+            <tbody id="alerts-body">
+                <!-- populated by JavaScript -->
+            </tbody>
+        </table>
+        <div class="refresh-note">Auto-refreshes every 5 seconds</div>
+    </section>
+
+    <script>
+        async function fetchAlerts() {
+            const response = await fetch('/alerts');
+            const data = await response.json();
+
+            document.getElementById('total-count').textContent = data.total;
+            document.getElementById('http-count').textContent = data.http_count;
+            document.getElementById('ftp-telnet-count').textContent =
+                data.ftp_count + data.telnet_count;
+
+            const badge = document.getElementById('status-badge');
+            if (data.is_monitoring) {
+                badge.textContent = 'Active';
+                badge.className = 'status-badge status-active';
+            } else {
+                badge.textContent = 'Inactive';
+                badge.className = 'status-badge status-inactive';
+            }
+
+            const tbody = document.getElementById('alerts-body');
+            tbody.innerHTML = '';
+            data.alerts.forEach(alert => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${alert.alert_id}</td>
+                    <td>${alert.source_ip}</td>
+                    <td>${alert.destination_ip}</td>
+                    <td>${alert.protocol}</td>
+                    <td>${alert.destination_port}</td>
+                    <td>${alert.timestamp}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function startMonitoring() {
+            await fetch('/start', { method: 'POST' });
+            fetchAlerts();
+        }
+
+        async function stopMonitoring() {
+            await fetch('/stop', { method: 'POST' });
+            fetchAlerts();
+        }
+
+        fetchAlerts();
+        setInterval(fetchAlerts, 5000);
+    </script>
+
+</body>
+</html>
